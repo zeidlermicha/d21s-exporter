@@ -6,6 +6,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
 	"github.com/zeidlermicha/d21s-exporter/collector"
 	"github.com/zeidlermicha/go-d21s/pkg/client"
@@ -60,7 +61,7 @@ func main() {
 	prometheus.MustRegister(versionMetric)
 	prometheus.MustRegister(collector.NewD21SCollector(logger, d21sClient))
 
-	http.Handle(*metricsPath, prometheus.Handler())
+	http.Handle(*metricsPath, promhttp.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		_, err = w.Write([]byte(`<html>
 			<head><title>D21S Exporter</title></head>
