@@ -1,11 +1,10 @@
 package collector
 
 import (
-	"github.com/go-kit/kit/log"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 	"github.com/zeidlermicha/go-d21s/pkg/client"
 
-	"github.com/go-kit/kit/log/level"
 	"time"
 )
 
@@ -95,10 +94,7 @@ func (c *D21SCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *D21SCollector) Collect(ch chan<- prometheus.Metric) {
 	projects, err := c.d21sClient.ProjectService.GetProjects()
 	if err != nil {
-		_ = level.Error(c.logger).Log(
-			"msg", "error getting projects",
-			"err", err,
-		)
+		c.logger.WithError(err).Error("error getting projects")
 		return
 	}
 	for _, project := range projects.Projects {
@@ -107,19 +103,13 @@ func (c *D21SCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 		connectors, err := c.d21sClient.DataConnectorService.GetDataconnectorsByPath(project.Name)
 		if err != nil {
-			_ = level.Error(c.logger).Log(
-				"msg", "error getting connectors",
-				"err", err,
-			)
+			c.logger.WithError(err).Error("error getting connectors")
 			continue
 		}
 		for _, connector := range connectors.DataConnectors {
 			connMetric, err := c.d21sClient.DataConnectorService.GetDataconnectorMetricByPath(connector.Name)
 			if err != nil {
-				_ = level.Error(c.logger).Log(
-					"msg", "error getting connector metrics",
-					"err", err,
-				)
+				c.logger.WithError(err).Error("error getting connector metrics")
 				continue
 			}
 			for _, metric := range c.dataConnectorMetric {

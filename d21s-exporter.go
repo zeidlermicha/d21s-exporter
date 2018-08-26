@@ -3,15 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	log "github.com/sirupsen/logrus"
 	"github.com/zeidlermicha/d21s-exporter/collector"
 	"github.com/zeidlermicha/go-d21s/pkg/client"
 	"github.com/zeidlermicha/go-d21s/pkg/config"
-	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -40,21 +38,13 @@ func main() {
 	}
 
 	logger := getLogger(*logLevel, *logOutput, *logFormat)
-
-	// returns nil if not provided and falls back to simple TCP.
 	d21sConfig, err := config.NewConfiguration(*d21sUri, *d21sAuthUri, *d21sEmail, *d21sClientKey, *d21sClientPrivateKey)
 	if err != nil {
-		_ = level.Error(logger).Log(
-			"msg", "failed creating d21s client",
-			"err", err,
-		)
+		logger.WithError(err).Error("failed creating d21s client")
 	}
 	d21sClient, err := client.NewClient(d21sConfig)
 	if err != nil {
-		_ = level.Error(logger).Log(
-			"msg", "failed creating d21s client",
-			"err", err,
-		)
+		logger.WithError(err).Error("failed creating d21s client")
 	}
 	// version metric
 	versionMetric := version.NewCollector(Name)
@@ -71,26 +61,18 @@ func main() {
 			</body>
 			</html>`))
 		if err != nil {
-			_ = level.Error(logger).Log(
-				"msg", "failed handling writer",
-				"err", err,
-			)
+			logger.WithError(err).Error("failed handling writer")
 		}
 	})
 
-	_ = level.Info(logger).Log(
-		"msg", "starting d21s_exporter",
-		"addr", *listenAddress,
-	)
+	logger.Infof("starting d21s_exporter addr: %s", *listenAddress)
 
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
-		_ = level.Error(logger).Log(
-			"msg", "http server quit",
-			"err", err,
-		)
+		logger.WithError(err).Error("http server quit")
 	}
 }
 func getLogger(loglevel, logoutput, logfmt string) log.Logger {
+	logger := log.Logger{}
 	var out *os.File
 	switch strings.ToLower(logoutput) {
 	case "stderr":
@@ -100,37 +82,35 @@ func getLogger(loglevel, logoutput, logfmt string) log.Logger {
 	default:
 		out = os.Stdout
 	}
-	var logCreator func(io.Writer) log.Logger
 	switch strings.ToLower(logfmt) {
 	case "json":
-		logCreator = log.NewJSONLogger
+		logger.Formatter = &log.JSONFormatter{}
 	case "logfmt":
-		logCreator = log.NewLogfmtLogger
+		logger.Formatter = &log.TextFormatter{}
 	default:
-		logCreator = log.NewLogfmtLogger
+		logger.Formatter = &log.TextFormatter{}
+
 	}
 
 	// create a logger
-	logger := logCreator(log.NewSyncWriter(out))
+	logger.Out = out
 
 	// set loglevel
-	var loglevelFilterOpt level.Option
 	switch strings.ToLower(loglevel) {
 	case "debug":
-		loglevelFilterOpt = level.AllowDebug()
+		logger.Level = log.DebugLevel
 	case "info":
-		loglevelFilterOpt = level.AllowInfo()
+		logger.Level = log.InfoLevel
 	case "warn":
-		loglevelFilterOpt = level.AllowWarn()
+		logger.Level = log.WarnLevel
 	case "error":
-		loglevelFilterOpt = level.AllowError()
+		logger.Level = log.ErrorLevel
+	case "fatal":
+		logger.Level = log.FatalLevel
+	case "panic":
+		logger.Level = log.PanicLevel
 	default:
-		loglevelFilterOpt = level.AllowInfo()
+		logger.Level = log.InfoLevel
 	}
-	logger = level.NewFilter(logger, loglevelFilterOpt)
-	logger = log.With(logger,
-		"ts", log.DefaultTimestampUTC,
-		"caller", log.DefaultCaller,
-	)
 	return logger
 }
