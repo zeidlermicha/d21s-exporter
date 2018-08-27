@@ -1,3 +1,6 @@
+
+[![Docker Build Status](https://img.shields.io/docker/build/jrottenberg/ffmpeg.svg)](https://hub.docker.com/r/smmaach/d21s-exporter)
+
 # d21s-exporter
 prometheus exporter for https://disruptive-technologies.com
 
