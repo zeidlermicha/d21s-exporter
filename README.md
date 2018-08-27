@@ -1,3 +1,4 @@
+https://img.shields.io/docker/automated/jrottenberg/ffmpeg.svg
 # d21s-exporter
 prometheus exporter for https://disruptive-technologies.com
 
