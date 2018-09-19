@@ -5,6 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/zeidlermicha/go-d21s/pkg/client"
 
+	"fmt"
 	"time"
 )
 
@@ -92,11 +93,13 @@ func (c *D21SCollector) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 func (c *D21SCollector) Collect(ch chan<- prometheus.Metric) {
+	c.logger.Debug("Started Collecting")
 	projects, err := c.d21sClient.ProjectService.GetProjects()
 	if err != nil {
 		c.logger.WithError(err).Error("error getting projects")
 		return
 	}
+	c.logger.Debug(fmt.Sprintf("found %d projects", len(projects.Projects)))
 	for _, project := range projects.Projects {
 		for _, metric := range c.projectMetric {
 			ch <- prometheus.MustNewConstMetric(metric.Desc, metric.Type, float64(metric.Value(project)), project.DisplayName)
@@ -106,6 +109,7 @@ func (c *D21SCollector) Collect(ch chan<- prometheus.Metric) {
 			c.logger.WithError(err).Error("error getting connectors")
 			continue
 		}
+		c.logger.Debug(fmt.Sprintf("Number of connectors for %s:%d", project.Name, len(connectors.DataConnectors)))
 		for _, connector := range connectors.DataConnectors {
 			connMetric, err := c.d21sClient.DataConnectorService.GetDataconnectorMetricByPath(connector.Name)
 			if err != nil {
